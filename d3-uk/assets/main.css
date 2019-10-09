@@ -1,0 +1,55 @@
+.map svg {
+    display: block;
+    margin: 0 auto;
+    margin-top: 32px;
+    border: 1px solid #e8e8e8;
+}
+
+path {
+    stroke: white;
+    stroke-width: 0.5px;
+    fill: none;
+}
+
+.subunit.SCT {
+    fill: #ddc;
+}
+.subunit.WLS {
+    fill: #cdd;
+}
+.subunit.NIR {
+    fill: #cdc;
+}
+.subunit.ENG {
+    fill: #dcd;
+}
+.subunit.IRL, .subunit-label.IRL {
+    display: none;
+}
+
+.subunit-boundary.IRL {
+    stroke: #777;
+    stroke-dasharray: 2,2;
+    stroke-linejoin: round;
+}
+
+.subunit-label {
+    fill: #777;
+    fill-opacity: .5;
+    font-size: 11px;
+    font-weight: 300;
+    text-anchor: middle;
+}
+
+.place {
+    fill: #808080;
+}
+.place-label {
+    fill: #444;
+}
+
+text {
+    font-family: "Helvetica Neue", Helvetica, Arial;
+    font-size: 10px;
+    pointer-events: none;
+}
