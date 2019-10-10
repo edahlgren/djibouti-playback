@@ -1,0 +1,4 @@
+
+[ ] history2json.js - generate json events
+[ ] assets/main.js - create ant and path elements
+[ ] iterate through events and update the visualization
