@@ -1,0 +1,34 @@
+.map svg {
+    display: block;
+    margin: 0 auto;
+    margin-top: 32px;
+    border: 1px solid #e8e8e8;
+}
+
+path {
+    stroke: white;
+    stroke-width: 0.5px;
+    fill: #e9eef0;
+}
+
+.country-label {
+    fill: #777;
+    fill-opacity: .5;
+    font-size: 11px;
+    font-weight: 300;
+    text-anchor: middle;
+}
+
+.place {
+    fill: #ff0000;
+}
+
+.place-label {
+    fill: #808080;
+}
+
+text {
+    font-family: "Helvetica Neue", Helvetica, Arial;
+    font-size: 10px;
+    pointer-events: none;
+}
