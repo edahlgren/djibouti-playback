@@ -1,4 +1,10 @@
 
-[ ] history2json.js - generate json events
-[ ] assets/main.js - create ant and path elements
-[ ] iterate through events and update the visualization
+[x] setup http server to seek in history and provide events
+[x] setup play button to start playback
+[ ] SVG - create ant, tour, and pheromone elements
+[ ] iterate through the events and update the SVG
+
+[ ] implement a pause button
+[ ] create a scrub/seek bar for jumping between events
+[ ] enable playing from any point in time
+[ ] enable different speeds (fast/slow motion)

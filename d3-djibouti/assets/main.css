@@ -1,7 +1,20 @@
+.container {
+    margin: 0 auto;
+    width: fit-content;
+    margin-top: 4rem;
+}
+
+.play {
+    margin-top: 1rem;
+    padding: 0.5rem;
+    border: 1px solid #e8e8e8;
+    width: fit-content;
+    margin-left: auto;
+    cursor: pointer;
+}
+
 .map svg {
     display: block;
-    margin: 0 auto;
-    margin-top: 32px;
     border: 1px solid #e8e8e8;
 }
 

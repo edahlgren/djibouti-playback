@@ -1,31 +1,36 @@
+// Very basic method to get json from url
+function http_json(url) {
+    return new Promise(function(resolve, reject) {        
+        var req = new XMLHttpRequest();
+        req.onreadystatechange = function() {
+            if (req.readyState == 4) {
+                if (req.status != 200) {
+                    reject({status: req.status, text: req.statusText});
+                    return;
+                }
+                let json = JSON.parse(req.responseText);
+                resolve(json);
+        }
+    };
+    req.open("GET", url, true);
+        req.send();
+    });
+}
 
 // Add a fixed-sized SVG to the body
 var width = 768,
-    height = 928,
+    height = 800,
     svg = d3.select("#map").append("svg")
         .attr("width", width)
         .attr("height", height);
 
 // Choose a 2D -> 3D projection
-/**
-var projection = d3.geo.albers()
-        .scale(5000)         // scale it up A LOT
-        .translate([width / 2, height / 2]); // center projection in SVG
-**/
-
 var projection = d3.geo.albers()
         .center([42.56, 11.67])
         .parallels([11, 13])
         .rotate([0, 0])
         .scale(20000)
-        .translate([width / 2, height / 2]);
-
-/**
-var projection = d3.geo.mercator()
-        .center([42.56, 11.67])
-        .scale(20000)
-        .translate([width / 2, height / 2]);
-**/
+        .translate([width / 2, (height / 2) + 50]);
 
 // Create a path that uses the projection
 var path = d3.geo.path()
@@ -92,5 +97,27 @@ d3.json("data/djibouti.json", function(error, djibouti) {
         .style("text-anchor", function(d) {
             return "start";
         });
-    
 });
+
+var play = document.getElementById('play');
+play.addEventListener('click', function(event) {
+    start_playback();
+}, false);
+
+const history_server = "http://127.0.0.1:4444";
+async function start_playback() {
+    // Get number of lines
+    let lines = await http_json(history_server + "/lines");
+
+    console.log("history contains", lines.lines, "lines");
+    
+    // Get history event for each line
+    for (var i = 0; i < lines.lines; i++) {
+        let event = await http_json(history_server + "/line/" + i);
+        update_map(i, event);
+    }
+}
+
+function update_map(number, event) {
+    console.log("event number", number, "->", event.type);
+}
