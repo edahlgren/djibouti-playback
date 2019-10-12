@@ -24,6 +24,12 @@ path {
     fill: #e9eef0;
 }
 
+text {
+    font-family: "Helvetica Neue", Helvetica, Arial;
+    font-size: 10px;
+    pointer-events: none;
+}
+
 .country-label {
     fill: #777;
     fill-opacity: .5;
@@ -40,8 +46,26 @@ path {
     fill: #808080;
 }
 
-text {
-    font-family: "Helvetica Neue", Helvetica, Arial;
-    font-size: 10px;
-    pointer-events: none;
+.trail {
+    stroke: rgba(245, 247, 247, 0.2);
+    stroke-width: 2px;
+    stroke-linecap: round;
+}
+
+.tour {
+    stroke: rgba(144, 212, 212, 0.35);
+    stroke-width: 2px;
+    stroke-linecap: round;
+    fill: none;
+}
+
+.best {
+    display: none;
+}
+
+.ant {
+    stroke: rgba(144, 212, 212, 0.35);    
+    stroke-width: 2px;
+    stroke-linecap: round;
+    fill: none;
 }

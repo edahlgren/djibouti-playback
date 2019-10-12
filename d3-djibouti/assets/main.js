@@ -17,6 +17,14 @@ function http_json(url) {
     });
 }
 
+var play = document.getElementById('play');
+
+const history_server = "http://127.0.0.1:4444";
+var max_lines = -1;
+var last_line = -1;
+var element_cache = {};
+var city_locations = {};
+
 // Add a fixed-sized SVG to the body
 var width = 768,
     height = 800,
@@ -37,6 +45,10 @@ var path = d3.geo.path()
         .projection(projection)
         .pointRadius(2);
 
+var line_generator = d3.svg.line();
+var scale_p = d3.scale.linear();
+var best_tours = [];
+
 // Load the json
 d3.json("data/djibouti.json", function(error, djibouti) {
     if (error) return console.error(error);
@@ -44,6 +56,14 @@ d3.json("data/djibouti.json", function(error, djibouti) {
     var countries = topojson.feature(djibouti, djibouti.objects.countries),
         cities = topojson.feature(djibouti, djibouti.objects.named_cities);
         
+    add_countries(countries);
+    add_trails(cities);
+    add_cities(cities);
+
+    setup_play();
+});
+
+function add_countries(countries) {
     // Add countries
     svg.selectAll(".country")
         .data(countries.features)               // add the features data
@@ -52,28 +72,17 @@ d3.json("data/djibouti.json", function(error, djibouti) {
             return "country " + d.id;
         })
         .attr("d", path);             // use the projection to format
-    
-    // Label countries
-    svg.selectAll(".country-label")
-        .data(countries.features)                     // use the features data
-        .enter().append("text")             // add text elements
-        .attr("class", function(d) {        // give them a class name
-            return "country-label " + d.id;
-        })
-        .attr("transform", function(d) {    // position them in the center
-            // of the feature
-            return "translate(" + path.centroid(d) + ")";
-        })
-        .attr("dy", ".35em")                // no idea why this is necessary
-        .text(function(d) {                 // set the text
-            return d.properties.name;
-        });
-    
-    // Add capital cities
+}
+
+function add_cities(cities) {
+    // Add cities
     svg.append("path")
         .datum(cities)
         .attr("d", path)
-        .attr("class", "place");
+        .attr("class", "place")
+        .attr("id", function(d, i) {
+            return i;
+        });
     
     // Label capital cities
     svg.selectAll(".place-label")
@@ -89,7 +98,7 @@ d3.json("data/djibouti.json", function(error, djibouti) {
         .text(function(d) {
             return d.properties.name;
         });
-    
+
     svg.selectAll(".place-label")
         .attr("x", function(d) {
             return 6;
@@ -97,27 +106,202 @@ d3.json("data/djibouti.json", function(error, djibouti) {
         .style("text-anchor", function(d) {
             return "start";
         });
-});
 
-var play = document.getElementById('play');
-play.addEventListener('click', function(event) {
-    start_playback();
-}, false);
-
-const history_server = "http://127.0.0.1:4444";
-async function start_playback() {
-    // Get number of lines
-    let lines = await http_json(history_server + "/lines");
-
-    console.log("history contains", lines.lines, "lines");
-    
-    // Get history event for each line
-    for (var i = 0; i < lines.lines; i++) {
-        let event = await http_json(history_server + "/line/" + i);
-        update_map(i, event);
+    for (var i = 0; i < cities.features.length; i++) {
+        element_cache[i] = document.getElementById(i);
+        city_locations[i] = projection(cities.features[i].geometry.coordinates);
     }
 }
 
-function update_map(number, event) {
-    console.log("event number", number, "->", event.type);
+function add_trails(cities) {
+    let n = cities.features.length;
+    let coords1 = {};
+    let coords2 = {};
+    
+    for (var i = 0; i < n; i++) {
+        for (var j = 0; j < i; j++) {
+            coords1 = projection(cities.features[i].geometry.coordinates);
+            coords2 = projection(cities.features[j].geometry.coordinates);
+
+            let id = i + "-" + j;
+            
+            svg.append("line")
+                .attr("id", id)
+                .attr("class", "trail")
+                .attr("x1", coords1[0])
+                .attr("y1", coords1[1])
+                .attr("x2", coords2[0])
+                .attr("y2", coords2[1]);
+
+            element_cache[id] = document.getElementById(id);
+        }
+    }
+}
+
+async function setup_play() {
+    let lines = await http_json(history_server + "/lines");
+    max_lines = lines.lines;
+
+    let pheromones = await http_json(history_server + "/pheromones");
+    scale_p = d3.scale.linear()
+        .domain([pheromones.min, pheromones.max])
+        .range([0.05, 0.40]);
+    
+    play.addEventListener('click', function(event) {
+        if (!play.dataset.enabled) return;
+        
+        next_event_from_history();
+    }, false);
+
+    enable_play();
+}
+
+function disable_play() {
+    play.style.color = "#bfbfbf";
+    play.style.cursor = "unset";
+    play.dataset.enabled = false;
+}
+
+function enable_play() {
+    play.style.color = "#000000";
+    play.style.cursor = "pointer";
+    play.dataset.enabled = false;
+}
+
+async function next_event_from_history() {
+    let next = last_line + 1;
+    
+    disable_play();
+
+    d3.selectAll(".ant").remove();
+    
+    if (next >= max_lines) {
+        console.log("END");
+        show_last_best();
+        return;
+    }
+
+    // Get the next event
+    let event = await http_json(history_server + "/line/" + next);
+    console.log("next", next);
+    
+    // Handle the event
+    switch (event.type) {
+    case "PHEROMONES":
+        console.log("handling PHEROMONES");
+        handle_pheromones(event);
+        break;
+
+    case "BEST":
+        console.log("handling BEST");
+        handle_best(event);
+        break;
+
+    case "ANTS":
+        // Collect subsequent consecutive ant events
+        let events = [event];
+        let _next = next;
+        while (true) {
+            _next += 1;
+            if (_next >= max_lines)
+                break;
+            
+            event = await http_json(history_server + "/line/" + _next);
+            if (event.type !== "ANTS")
+                break;
+            
+            events.push(event);
+            next = _next;
+        }
+
+        console.log("handling ANTS");
+        await handle_ants(events);
+        break;
+        
+    default:
+        console.log("unknown event", "'" + event.type + "'", "skipping");
+    }
+
+    last_line = next;
+    enable_play();
+}
+
+function handle_pheromones(event) {
+
+    for (var key in event.trails) {
+        if (event.trails.hasOwnProperty(key) &&
+            element_cache.hasOwnProperty(key)) {
+
+            let element = element_cache[key];
+            let pheromone = event.trails[key];
+
+            element.style.stroke = 
+                "rgba(245, 247, 247, " + scale_p(pheromone) + ")";
+        }
+    }
+}
+
+function handle_best(event) {
+    let points = event.tour.map(function(city) {
+        return city_locations[city];
+    });
+    points.push(points[0]);
+    let tour = line_generator(points);
+
+    let next_best = best_tours.length;
+    let id = "tour-" + next_best;
+    
+    svg.append("path")
+        .attr("id", "tour-" + next_best)
+        .attr("class", "best tour")
+        .attr('d', tour);
+
+    best_tours.push(document.getElementById(id));
+}
+
+function show_last_best() {
+    if (best_tours.length == 0) {
+        console.log("No best tours :(");
+        return;
+    }
+    
+    let last = best_tours.length - 1;
+    let elem = best_tours[last];
+    elem.style.display = "inline";
+}
+
+function handle_ants(events) {
+
+    let points = events.map(function(e) {
+        let city = e.positions[0];
+        return city_locations[city];
+    });
+    points.push(points[0]);
+    console.log("points", points);
+    let line = line_generator(points);
+    console.log("line", line);
+    
+    function tweenDash() {
+        var l = this.getTotalLength(),
+            i = d3.interpolateString("0," + l, l + "," + l);
+        return function(t) { return i(t); };
+    }
+    
+    return new Promise(function(resolve, reject) {        
+    
+        svg.append("path")
+            .attr("class", "ant")
+            .attr("d", line)
+            .call(transition);
+
+        function transition(path) {
+            path.transition()
+                .ease("linear")
+                .duration(2000)
+                .attrTween("stroke-dasharray", tweenDash)
+                .each("end", function() {
+                    resolve();
+                });
+        }
+    });
 }
